@@ -53,4 +53,50 @@ birthday_large_df |>
 ```
 
 
+## Problem 2
+
+### This zip file contains data from a longitudinal study that included a control arm and an experimental arm. Data for each participant is included in a separate file, and file names include the subject ID and arm.
+
+### Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:``
+```{r, message = F}
+### Start with a dataframe containing all file names; the list.files function will help
+#files_df = tibble(
+#  file = paste0("data/", list.files("data")))
+files_df = tibble(file = list.files("data"))
+  
+
+### Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
+study_df = files_df |> 
+  mutate(
+    repeated = map(paste0("data/", file), read_csv)
+  )
+
+### Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
+study_df = study_df |> 
+  unnest(cols = c(repeated)) |> 
+  pivot_longer(cols = contains("week"),
+               names_to = "week",
+               values_to = "value",
+               names_prefix = "week_") |> 
+  mutate(arm = case_when(
+    str_detect(file, "con") ~ "control",
+    str_detect(file, "exp") ~ "experimental"
+  ),
+  subject_id = str_extract(file, "\\d+"),
+  week = as.numeric(week), 
+  arm = factor(arm))
+
+head(study_df)
+```
+
+
+### Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
+```{r}
+study_df |> 
+  ggplot(aes(x = week, y = value, color = subject_id)) +
+  geom_line() +
+  labs(x  = "Week", y = "Outcome", color = "Subject", title = "Change in Outcome Across Time of Trial for each Subject", subtitle = "Faceted by Treatment Arm") +
+  facet_wrap(. ~ arm)
+```
+
 
