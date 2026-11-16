@@ -7,6 +7,7 @@ output: github_document
 
 ```{r}
 library(tidyverse)
+library(latex2exp)
 ```
 
 ## Problem 1
@@ -117,28 +118,71 @@ For each dataset, save $\hat{\mu}$ and the p-value from a test of $H_0: \mu = 0$
 Repeat the above for $\mu =\{1,2,3,4,5,6\}$, and complete the following:
 
 ```{r}
-## Set elements:
-n = 30
-sigma = 5
-mu = 0
-
-sim_normal = function(samp_size){
-  samp = rnorm(samp_size, mu, sigma)
+## Create function:
+sim_normal = function(mu){
+  samp = rnorm(n = 30, mean = mu, sd = 5)
   return(samp)
 }
 
-## Generate Data:
-sim_data = tibble(
-  samp_size = rep(n, 5000)
+## Generate data and run t-tests:
+sim_data = expand_grid(
+  mu = 0:6,
+  iter = 1:5000
 ) |> 
   mutate(
-    repeated = map(samp_size, sim_normal)
+    repeated = map(mu, sim_normal),
+    mu_hat   = map(repeated, mean),
+    t_res    = map(repeated, \(x) t.test(x, mu = 0)),
+    p_value  = map_dbl(t_res, \(t) t$p.value)
   ) |> 
-  unnest()
+  select(-repeated, -t_res) |> 
+  unnest(cols = c(mu_hat))
+``` 
+
+### Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
+```{r}
+sim_data |> 
+  mutate(reject = p_value < 0.05) |> 
+  group_by(mu) |> 
+  summarize(power = mean(reject)) |> 
+  ggplot(aes(x = factor(mu), y = power)) +
+  geom_point() +
+  labs(x = TeX(r"($\mu$)"), 
+       y = "Power", 
+       title = TeX(r"(Power of Test by True $\mu$)"))
 ```
 
+There seems to be a clear positive association between the true value of $\mu$ and the power of the test. This suggests that as the effect size gets larger, we observe much higher power. The result is intuitive; as our sampled mean progresses farther away from the null $\mu$ value of 0, we will have a stronger effect size and greater difference between $\hat{\mu}$ and the null value, thus higher power.
 
-### Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of 𝜇 on the x axis. Describe the association between effect size and power.
+### Make a plot showing the average estimate of $\hat{\mu}$ on the y axis and the true value of $\mu$ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$ only in samples for which the null was rejected on the y axis and the true value of $\mu$ on the x axis. 
+```{r}
+## Make a data frame with the average estimate of mu_hat for all  data:
+mu_avg = sim_data |> 
+  group_by(mu) |> 
+  summarize(mu_hat_avg = mean(mu_hat))
 
-### Make a plot showing the average estimate of $\hat{\mu}$ on the y axis and the true value of $\mu$ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$ only in samples for which the null was rejected on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+## Calculate average mu_hat only within samples rejected:
+sim_data |> 
+  mutate(reject = p_value < 0.05) |> 
+  group_by(mu, reject) |> 
+  summarize(mu_hat_sig = mean(mu_hat)) |> 
+  filter(reject == TRUE) |> 
+  left_join(mu_avg, by = "mu") |> 
+  pivot_longer(cols = contains("mu_hat"),
+               values_to = "mu_val",
+               names_to = "mu_hat") |> 
+  mutate(mu_hat = case_when(
+    mu_hat == "mu_hat_sig" ~ "Samples where Null was Rejected",
+    mu_hat == "mu_hat_avg" ~ "All Samples"
+  )) |> 
+  ggplot(aes(x = mu, y = mu_val, color = mu_hat)) +
+  geom_point(alpha = 0.5) +
+  labs(x = TeX(r"($\mu$)"), 
+       y = TeX(r"(Average Estimate of $\hat{\mu}$)"), 
+       color = TeX(r"($\hat{\mu}$)"), 
+       title = "Average Estimate by Rejection Status")
+```
+
+## Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+No, the sample average is not approximately equal to the true value of $\mu$. For true $\mu$ values that are low (1, 2), the test has low power to detect an effect, causing the t-test to use a more conservative significance cutoff. Because the true means in these cases are still close to zero and low, the test only flags significant samples when they are very far off from the null value. In the case of $\mu$ = 0, the estimates from the significant samples are symmetric around zero, so they cancel out and leave the estimate right around 0. You can see that when our power reaches above 80%, as with $\mu = 3, 4, 5, 6$, the average of $\hat{\mu}$ does approximate the true value of $\mu$, because power is much higher.
 
