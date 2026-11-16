@@ -6,6 +6,14 @@ output: github_document
 ---
 
 ```{r}
+knitr::opts_chunk$set(
+  dpi = 300,
+  fig.retina = 2
+)
+```
+
+
+```{r, output = F, message=FALSE}
 library(tidyverse)
 library(latex2exp)
 ```
@@ -53,6 +61,7 @@ birthday_large_df |>
   labs(x = "Group Size", y = "Probability", title = "Probability at Least Two People Share a Birthday Based on Group Size")
 ```
 
+The plot shows that as group size increases, the probability of at least two people sharing the same birthday also increases near-linearly. As the number of people crosses to 23, we have a 50% probability of two people sharing a birthday, and the probability gets very close to 1 as we reach 50 people.
 
 ## Problem 2
 
@@ -100,6 +109,7 @@ study_df |>
   facet_wrap(. ~ arm)
 ```
 
+For the control arm, we don't see much of a trend in the outcome across time. In contrast, the experimental arm seems to have an increase in the outcome as the weeks progress! Overall, the variance between groups seems to be similar.
 
 ## Problem 3
 
@@ -184,5 +194,6 @@ sim_data |>
 ```
 
 ## Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
-No, the sample average is not approximately equal to the true value of $\mu$. For true $\mu$ values that are low (1, 2), the test has low power to detect an effect, causing the t-test to use a more conservative significance cutoff. Because the true means in these cases are still close to zero and low, the test only flags significant samples when they are very far off from the null value. In the case of $\mu$ = 0, the estimates from the significant samples are symmetric around zero, so they cancel out and leave the estimate right around 0. You can see that when our power reaches above 80%, as with $\mu = 3, 4, 5, 6$, the average of $\hat{\mu}$ does approximate the true value of $\mu$, because power is much higher.
+
+No, the sample average is not approximately equal to the true value of $\mu$ for all values of $\mu$. For true $\mu$ values that are low (1, 2), the test has low power to detect an effect, causing the t-test to use a more conservative significance cutoff. Because the true means in these cases are still close to zero and low, the test only flags significant samples when they are very far off from the null value. In the case of $\mu$ = 0, the estimates from the significant samples are symmetric around zero, so they cancel out and leave the estimate right around 0. You can see that when our power reaches above 80%, as with $\mu = 3, 4, 5, 6$, the average of $\hat{\mu}$ does approximate the true value of $\mu$, because power is much higher.
 
